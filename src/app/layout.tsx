@@ -28,6 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        data-loom-blur-type-mv3="NONE"
       >
         <LanguageProvider>
           <Navigation />
