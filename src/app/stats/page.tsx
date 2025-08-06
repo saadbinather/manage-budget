@@ -590,7 +590,7 @@ export default function StatsPage() {
                       padding: 20,
                       font: {
                         size: 12,
-                        weight: "600",
+                        weight: "bold",
                       },
                     },
                   },
@@ -621,7 +621,6 @@ export default function StatsPage() {
                     beginAtZero: true,
                     grid: {
                       color: "#e5e7eb",
-                      drawBorder: false,
                     },
                     ticks: {
                       font: {
