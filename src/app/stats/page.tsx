@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Chart.js and react-chartjs-2
 import { Pie, Bar, Line } from "react-chartjs-2";
@@ -29,22 +30,31 @@ ChartJS.register(
   Title
 );
 
-const EXPENSE_CATEGORIES = [
-  "Food",
-  "Rent",
-  "Utilities",
-  "Travel",
-  "Entertainment",
+// Use consistent category keys for data storage
+const EXPENSE_CATEGORY_KEYS = [
+  "food",
+  "rent",
+  "utilities",
+  "travel",
+  "entertainment",
+];
+
+const getExpenseCategories = (t: (key: string) => string) => [
+  t("category.food"),
+  t("category.rent"),
+  t("category.utilities"),
+  t("category.travel"),
+  t("category.entertainment"),
 ];
 
 // Budget allocation percentages based on income
-const BUDGET_PERCENTAGES = {
-  Food: 0.2, // 20% of income
-  Rent: 0.3, // 30% of income
-  Utilities: 0.15, // 15% of income
-  Travel: 0.2, // 20% of income
-  Entertainment: 0.15, // 15% of income
-};
+const getBudgetPercentages = () => ({
+  food: 0.2, // 20% of income
+  rent: 0.3, // 30% of income
+  utilities: 0.15, // 15% of income
+  travel: 0.2, // 20% of income
+  entertainment: 0.15, // 15% of income
+});
 
 type Expense = {
   date: string;
@@ -60,8 +70,13 @@ type Income = {
 
 function getSessionData<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-  const data = sessionStorage.getItem(key);
-  return data ? JSON.parse(data) : fallback;
+  try {
+    const data = sessionStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch (error) {
+    console.error(`Error loading ${key} from sessionStorage:`, error);
+    return fallback;
+  }
 }
 
 function uniqueMonths(transactions: (Expense | Income)[]) {
@@ -85,9 +100,13 @@ function formatMonthLabel(year: number, month: number) {
 }
 
 export default function StatsPage() {
-  // State
+  const { t } = useLanguage();
+
+  // State - initialize as empty arrays to avoid hydration mismatch
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   const [filters, setFilters] = useState({
     dateFrom: "",
     dateTo: "",
@@ -99,10 +118,20 @@ export default function StatsPage() {
 
   const [amountRange, setAmountRange] = useState<[number, number]>([0, 10000]);
 
-  // Load from sessionStorage
+  // Load data from sessionStorage on mount (client-side only)
   useEffect(() => {
-    setExpenses(getSessionData<Expense[]>("expenses", []));
-    setIncomes(getSessionData<Income[]>("incomes", []));
+    console.log("Stats component mounted, loading data...");
+    const savedExpenses = getSessionData<Expense[]>("expenses", []);
+    const savedIncomes = getSessionData<Income[]>("incomes", []);
+    console.log("Stats loading data:", { savedExpenses, savedIncomes });
+    console.log("Stats expenses length:", savedExpenses.length);
+    console.log("Stats incomes length:", savedIncomes.length);
+
+    // Always set the data, even if empty, but mark as loaded
+    setExpenses(savedExpenses);
+    setIncomes(savedIncomes);
+    setIsDataLoaded(true);
+    console.log("Stats data loaded successfully");
   }, []);
 
   // Filtering logic
@@ -135,15 +164,17 @@ export default function StatsPage() {
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Pie Chart: Expense Category Breakdown
-  const categoryTotals = EXPENSE_CATEGORIES.map((cat) =>
-    filteredExpenses
-      .filter((e) => e.category === cat)
-      .reduce((sum, e) => sum + e.amount, 0)
-  );
+  const expenseCategories = getExpenseCategories(t);
+  const categoryTotals = expenseCategories.map((cat, index) => {
+    const categoryKey = EXPENSE_CATEGORY_KEYS[index];
+    return filteredExpenses
+      .filter((e) => e.category === categoryKey)
+      .reduce((sum, e) => sum + e.amount, 0);
+  });
   const totalExpense = categoryTotals.reduce((a, b) => a + b, 0);
 
   const pieData = {
-    labels: EXPENSE_CATEGORIES,
+    labels: expenseCategories,
     datasets: [
       {
         data: categoryTotals,
@@ -163,15 +194,18 @@ export default function StatsPage() {
   const totalIncome = filteredIncomes.reduce((sum, i) => sum + i.amount, 0);
 
   // Calculate dynamic budget limits based on income percentages
-  const dynamicBudgetLimits = EXPENSE_CATEGORIES.map((cat) =>
-    Math.round(
-      totalIncome * BUDGET_PERCENTAGES[cat as keyof typeof BUDGET_PERCENTAGES]
-    )
-  );
+  const budgetPercentages = getBudgetPercentages();
+  const dynamicBudgetLimits = expenseCategories.map((cat, index) => {
+    const categoryKey = EXPENSE_CATEGORY_KEYS[index];
+    return Math.round(
+      totalIncome *
+        budgetPercentages[categoryKey as keyof typeof budgetPercentages]
+    );
+  });
 
   // Bar Chart: Budget vs Actual
   const barData = {
-    labels: EXPENSE_CATEGORIES,
+    labels: expenseCategories,
     datasets: [
       {
         label: "Spent",
@@ -182,7 +216,7 @@ export default function StatsPage() {
       {
         label: "Budget",
         data: dynamicBudgetLimits,
-        backgroundColor: "#e5e7eb",
+        backgroundColor: "rgba(59, 130, 246, 0.3)",
         borderRadius: 4,
       },
     ],
@@ -212,22 +246,26 @@ export default function StatsPage() {
     labels: lineLabels,
     datasets: [
       {
-        label: "Expenses",
+        label: t("profile.expense"),
         data: monthlyExpense,
         borderColor: "#ef4444",
         backgroundColor: "#fca5a5",
         tension: 0.3,
         fill: false,
         borderWidth: 3,
+        pointRadius: 6,
+        pointHoverRadius: 8,
       },
       {
-        label: "Income",
+        label: t("profile.income"),
         data: monthlyIncome,
         borderColor: "#10b981",
         backgroundColor: "#6ee7b7",
         tension: 0.3,
         fill: false,
         borderWidth: 3,
+        pointRadius: 6,
+        pointHoverRadius: 8,
       },
     ],
   };
@@ -258,10 +296,10 @@ export default function StatsPage() {
         {/* Header Section */}
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-light text-slate-800 mb-3 tracking-tight">
-            Statistics & Insights
+            {t("stats.title")}
           </h1>
           <p className="text-slate-600 text-lg font-light">
-            Visualize your spending patterns and budget performance
+            {t("stats.subtitle")}
           </p>
         </div>
 
@@ -270,7 +308,7 @@ export default function StatsPage() {
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
-                Total Expenses
+                {t("home.totalExpenses")}
               </h3>
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
             </div>
@@ -278,14 +316,14 @@ export default function StatsPage() {
               ${totalExpense.toLocaleString()}
             </p>
             <p className="text-sm text-slate-500">
-              {filteredExpenses.length} transactions
+              {filteredExpenses.length} {t("home.transactions")}
             </p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
-                Total Income
+                {t("home.totalIncome")}
               </h3>
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
@@ -296,14 +334,14 @@ export default function StatsPage() {
                 .toLocaleString()}
             </p>
             <p className="text-sm text-slate-500">
-              {filteredIncomes.length} transactions
+              {filteredIncomes.length} {t("home.transactions")}
             </p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
-                Net Balance
+                {t("home.netBalance")}
               </h3>
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
             </div>
@@ -323,7 +361,8 @@ export default function StatsPage() {
               ).toLocaleString()}
             </p>
             <p className="text-sm text-slate-500">
-              {filteredTransactions.length} total transactions
+              {filteredTransactions.length} {t("home.transactions")}{" "}
+              {t("profile.total")}
             </p>
           </div>
         </div>
@@ -332,7 +371,7 @@ export default function StatsPage() {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 mb-12">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-slate-800">
-              Advanced Filters
+              {t("stats.advancedFilters")}
             </h3>
             <button
               className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors duration-200"
@@ -348,13 +387,13 @@ export default function StatsPage() {
                 setAmountRange([0, 10000]);
               }}
             >
-              Reset Filters
+              {t("stats.resetFilters")}
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Date From
+                {t("stats.dateFrom")}
               </label>
               <input
                 type="date"
@@ -367,7 +406,7 @@ export default function StatsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Date To
+                {t("stats.dateTo")}
               </label>
               <input
                 type="date"
@@ -380,7 +419,7 @@ export default function StatsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Category
+                {t("stats.category")}
               </label>
               <select
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -389,9 +428,11 @@ export default function StatsPage() {
                   setFilters((f) => ({ ...f, category: e.target.value }))
                 }
               >
-                <option value="">All Categories</option>
-                {EXPENSE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
+                <option value="">
+                  {t("stats.all")} {t("stats.category")}
+                </option>
+                {expenseCategories.map((cat, index) => (
+                  <option key={cat} value={EXPENSE_CATEGORY_KEYS[index]}>
                     {cat}
                   </option>
                 ))}
@@ -399,7 +440,7 @@ export default function StatsPage() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Amount Range
+                {t("stats.amountRange")}
               </label>
               <DoubleRangeSlider
                 min={0}
@@ -412,7 +453,7 @@ export default function StatsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Type
+                {t("stats.type")}
               </label>
               <select
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -421,9 +462,15 @@ export default function StatsPage() {
                   setFilters((f) => ({ ...f, type: e.target.value }))
                 }
               >
-                <option value="all">All Transactions</option>
-                <option value="expense">Expenses Only</option>
-                <option value="income">Income Only</option>
+                <option value="all">
+                  {t("stats.all")} {t("home.transactions")}
+                </option>
+                <option value="expense">
+                  {t("stats.expense")} {t("common.only")}
+                </option>
+                <option value="income">
+                  {t("stats.income")} {t("common.only")}
+                </option>
               </select>
             </div>
           </div>
@@ -434,7 +481,7 @@ export default function StatsPage() {
           {/* Pie Chart */}
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
             <h2 className="text-xl font-semibold mb-6 text-slate-800">
-              Expense Breakdown by Category
+              {t("stats.expenseBreakdownByCategory")}
             </h2>
             <div className="w-full flex flex-col items-center">
               <div className="w-64 h-64 mb-6">
@@ -455,7 +502,7 @@ export default function StatsPage() {
                 />
               </div>
               <div className="w-full space-y-4">
-                {EXPENSE_CATEGORIES.map((cat, idx) => (
+                {expenseCategories.map((cat, idx) => (
                   <div key={cat} className="bg-slate-50 rounded-xl p-4">
                     <div className="flex justify-between items-center mb-3">
                       <span className="font-semibold text-slate-800">
@@ -491,7 +538,7 @@ export default function StatsPage() {
           {/* Bar Chart */}
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
             <h2 className="text-xl font-semibold mb-6 text-slate-800">
-              Budget vs Actual Spending
+              {t("stats.budgetVsActualSpending")}
             </h2>
             <div className="w-full h-80">
               <Bar
@@ -527,7 +574,7 @@ export default function StatsPage() {
         {/* Line Chart */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 mb-12">
           <h2 className="text-xl font-semibold mb-6 text-slate-800">
-            Monthly Trends
+            {t("stats.monthlyTrends")}
           </h2>
           <div className="w-full h-80">
             <Line
@@ -541,17 +588,62 @@ export default function StatsPage() {
                     labels: {
                       usePointStyle: true,
                       padding: 20,
+                      font: {
+                        size: 12,
+                        weight: "600",
+                      },
+                    },
+                  },
+                  tooltip: {
+                    mode: "index",
+                    intersect: false,
+                    callbacks: {
+                      label: function (context) {
+                        return `${
+                          context.dataset.label
+                        }: $${context.parsed.y.toLocaleString()}`;
+                      },
                     },
                   },
                 },
                 scales: {
+                  x: {
+                    grid: {
+                      display: false,
+                    },
+                    ticks: {
+                      font: {
+                        size: 11,
+                      },
+                    },
+                  },
                   y: {
                     beginAtZero: true,
+                    grid: {
+                      color: "#e5e7eb",
+                      drawBorder: false,
+                    },
                     ticks: {
+                      font: {
+                        size: 11,
+                      },
                       callback: function (value) {
                         return "$" + value.toLocaleString();
                       },
                     },
+                  },
+                },
+                interaction: {
+                  mode: "index",
+                  intersect: false,
+                },
+                elements: {
+                  line: {
+                    tension: 0.3,
+                  },
+                  point: {
+                    hoverRadius: 8,
+                    radius: 6,
                   },
                 },
               }}
@@ -563,12 +655,12 @@ export default function StatsPage() {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-slate-800">
-              Filtered Transactions ({filteredTransactions.length})
+              {t("stats.filteredTransactions")} ({filteredTransactions.length})
             </h2>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <span className="text-xs text-slate-500 font-medium">
-                Showing filtered results
+                {t("stats.showingFilteredResults")}
               </span>
             </div>
           </div>
@@ -578,16 +670,16 @@ export default function StatsPage() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="py-3 px-4 text-left font-semibold text-slate-700">
-                    Date
+                    {t("history.date")}
                   </th>
                   <th className="py-3 px-4 text-left font-semibold text-slate-700">
-                    Type
+                    {t("stats.type")}
                   </th>
                   <th className="py-3 px-4 text-left font-semibold text-slate-700">
-                    Category/Title
+                    {t("history.category")}/{t("history.transactionTitle")}
                   </th>
                   <th className="py-3 px-4 text-right font-semibold text-slate-700">
-                    Amount
+                    {t("history.amount")}
                   </th>
                 </tr>
               </thead>
@@ -613,61 +705,76 @@ export default function StatsPage() {
                           />
                         </svg>
                         <p className="text-slate-500 font-medium">
-                          No transactions found
+                          {t("history.noTransactions")}
                         </p>
                         <p className="text-slate-400 text-sm">
-                          Try adjusting your filters
+                          {t("stats.tryAdjustingFilters")}
                         </p>
                       </div>
                     </td>
                   </tr>
                 )}
-                {filteredTransactions.map((t, idx) => (
+                {filteredTransactions.map((transaction, idx) => (
                   <tr
                     key={idx}
                     className={`border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors duration-200 ${
-                      t.type === "expense" ? "bg-red-50/30" : "bg-green-50/30"
+                      transaction.type === "expense"
+                        ? "bg-red-50/30"
+                        : "bg-green-50/30"
                     }`}
                   >
                     <td className="py-3 px-4 font-medium text-slate-700">
-                      {new Date(t.date).toLocaleDateString()}
+                      {new Date(transaction.date).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          t.type === "expense"
+                          transaction.type === "expense"
                             ? "bg-red-100 text-red-700"
                             : "bg-green-100 text-green-700"
                         }`}
                       >
-                        {t.type}
+                        {transaction.type === "expense"
+                          ? t("profile.expense")
+                          : t("profile.income")}
                       </span>
                     </td>
                     <td className="py-3 px-4">
                       <div>
                         <span className="font-medium text-slate-800">
-                          {t.type === "expense"
-                            ? (t as unknown as Expense).title ||
-                              (t as unknown as Expense).category
-                            : "Income"}
+                          {transaction.type === "expense"
+                            ? (transaction as Expense).title ||
+                              getExpenseCategories(t)[
+                                EXPENSE_CATEGORY_KEYS.indexOf(
+                                  (transaction as Expense).category
+                                )
+                              ]
+                            : t("profile.income")}
                         </span>
-                        {t.type === "expense" && (
-                          <span className="ml-2 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                            {(t as unknown as Expense).category}
-                          </span>
-                        )}
+                        {transaction.type === "expense" &&
+                          (transaction as Expense).category && (
+                            <span className="ml-2 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                              {
+                                getExpenseCategories(t)[
+                                  EXPENSE_CATEGORY_KEYS.indexOf(
+                                    (transaction as Expense).category
+                                  )
+                                ]
+                              }
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <span
                         className={`font-bold text-lg ${
-                          t.type === "expense"
+                          transaction.type === "expense"
                             ? "text-red-600"
                             : "text-green-600"
                         }`}
                       >
-                        {t.type === "expense" ? "-" : "+"}$
-                        {t.amount.toLocaleString()}
+                        {transaction.type === "expense" ? "-" : "+"}$
+                        {transaction.amount.toLocaleString()}
                       </span>
                     </td>
                   </tr>

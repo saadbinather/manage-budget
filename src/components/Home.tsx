@@ -22,22 +22,32 @@ import { format } from "date-fns";
 import ExpenseChart from "./ExpenseBarChart";
 import BudgetChart from "./TopPieChart";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const EXPENSE_CATEGORIES = [
-  "Food",
-  "Rent",
-  "Utilities",
-  "Travel",
-  "Entertainment",
+// Use consistent category keys for data storage
+const EXPENSE_CATEGORY_KEYS = [
+  "food",
+  "rent",
+  "utilities",
+  "travel",
+  "entertainment",
 ];
 
-// Budget allocation percentages based on income
-const BUDGET_PERCENTAGES = {
-  Food: 0.2, // 20% of income
-  Rent: 0.3, // 30% of income
-  Utilities: 0.15, // 15% of income
-  Travel: 0.2, // 20% of income
-  Entertainment: 0.15, // 15% of income
+const getExpenseCategories = (t: (key: string) => string) => [
+  t("category.food"),
+  t("category.rent"),
+  t("category.utilities"),
+  t("category.travel"),
+  t("category.entertainment"),
+];
+
+const getCategoryKey = (
+  translatedCategory: string,
+  t: (key: string) => string
+) => {
+  const categories = getExpenseCategories(t);
+  const index = categories.indexOf(translatedCategory);
+  return index >= 0 ? EXPENSE_CATEGORY_KEYS[index] : translatedCategory;
 };
 
 type Expense = {
@@ -53,17 +63,38 @@ type Income = {
 };
 
 function getSessionData<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  const data = sessionStorage.getItem(key);
-  return data ? JSON.parse(data) : fallback;
+  if (typeof window === "undefined") {
+    console.log(`getSessionData: window undefined for ${key}`);
+    return fallback;
+  }
+  try {
+    const data = sessionStorage.getItem(key);
+    console.log(`getSessionData: ${key} =`, data);
+    return data ? JSON.parse(data) : fallback;
+  } catch (error) {
+    console.error(`Error loading ${key} from sessionStorage:`, error);
+    return fallback;
+  }
 }
 
 function setSessionData<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(key, JSON.stringify(value));
+  if (typeof window === "undefined") {
+    console.log(`setSessionData: window undefined for ${key}`);
+    return;
+  }
+  try {
+    const jsonValue = JSON.stringify(value);
+    console.log(`Saving ${key} to sessionStorage:`, jsonValue);
+    sessionStorage.setItem(key, jsonValue);
+    console.log(`Successfully saved ${key} to sessionStorage`);
+  } catch (error) {
+    console.error(`Error saving ${key} to sessionStorage:`, error);
+  }
 }
 
 export default function Home() {
+  const { t } = useLanguage();
+
   // Dialog states
   const [openExpense, setOpenExpense] = useState(false);
   const [openIncome, setOpenIncome] = useState(false);
@@ -71,7 +102,7 @@ export default function Home() {
   // Form states
   const [expenseForm, setExpenseForm] = useState<Expense>({
     date: format(new Date(), "yyyy-MM-dd"),
-    category: "Food",
+    category: "food",
     amount: 0,
     title: "",
   });
@@ -80,23 +111,28 @@ export default function Home() {
     amount: 0,
   });
 
-  // Data states
+  // Data states - initialize as empty arrays to avoid hydration mismatch
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Load from sessionStorage on mount
+  // Load data from sessionStorage on mount (client-side only)
   useEffect(() => {
-    setExpenses(getSessionData<Expense[]>("expenses", []));
-    setIncomes(getSessionData<Income[]>("incomes", []));
+    console.log("Home component mounted, loading data...");
+    const savedExpenses = getSessionData<Expense[]>("expenses", []);
+    const savedIncomes = getSessionData<Income[]>("incomes", []);
+    console.log("Home loading data:", { savedExpenses, savedIncomes });
+    console.log("Home expenses length:", savedExpenses.length);
+    console.log("Home incomes length:", savedIncomes.length);
+
+    // Always set the data, even if empty, but mark as loaded
+    setExpenses(savedExpenses);
+    setIncomes(savedIncomes);
+    setIsDataLoaded(true);
+    console.log("Home data loaded successfully");
   }, []);
 
-  // Save to sessionStorage on change
-  useEffect(() => {
-    setSessionData("expenses", expenses);
-  }, [expenses]);
-  useEffect(() => {
-    setSessionData("incomes", incomes);
-  }, [incomes]);
+  // Only save when explicitly adding/deleting, and only after data is loaded
 
   // Handlers
   const handleExpenseChange = (
@@ -119,11 +155,15 @@ export default function Home() {
 
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
-    setExpenses((prev) => [...prev, expenseForm]);
+    const newExpenses = [...expenses, expenseForm];
+    setExpenses(newExpenses);
+    if (isDataLoaded) {
+      setSessionData("expenses", newExpenses); // Save immediately
+    }
     setOpenExpense(false);
     setExpenseForm({
       date: format(new Date(), "yyyy-MM-dd"),
-      category: "Food",
+      category: "food",
       amount: 0,
       title: "",
     });
@@ -131,7 +171,11 @@ export default function Home() {
 
   const handleAddIncome = (e: React.FormEvent) => {
     e.preventDefault();
-    setIncomes((prev) => [...prev, incomeForm]);
+    const newIncomes = [...incomes, incomeForm];
+    setIncomes(newIncomes);
+    if (isDataLoaded) {
+      setSessionData("incomes", newIncomes); // Save immediately
+    }
     setOpenIncome(false);
     setIncomeForm({
       date: format(new Date(), "yyyy-MM-dd"),
@@ -145,38 +189,40 @@ export default function Home() {
     if (isExpense) {
       const newExpenses = expenses.filter((_, i) => i !== index);
       setExpenses(newExpenses);
-      setSessionData("expenses", newExpenses);
+      if (isDataLoaded) {
+        setSessionData("expenses", newExpenses);
+      }
     } else {
       const newIncomes = incomes.filter((_, i) => i !== index);
       setIncomes(newIncomes);
-      setSessionData("incomes", newIncomes);
+      if (isDataLoaded) {
+        setSessionData("incomes", newIncomes);
+      }
     }
   };
 
-  // Calculate totals
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
-
   // Get current month's expenses and income
   const currentMonthExpenses = expenses
-    .filter(
-      (expense) => new Date(expense.date).getMonth() === new Date().getMonth()
-    )
+    .filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      const currentDate = new Date();
+      return (
+        expenseDate.getMonth() === currentDate.getMonth() &&
+        expenseDate.getFullYear() === currentDate.getFullYear()
+      );
+    })
     .reduce((sum, expense) => sum + expense.amount, 0);
 
   const currentMonthIncome = incomes
-    .filter(
-      (income) => new Date(income.date).getMonth() === new Date().getMonth()
-    )
+    .filter((income) => {
+      const incomeDate = new Date(income.date);
+      const currentDate = new Date();
+      return (
+        incomeDate.getMonth() === currentDate.getMonth() &&
+        incomeDate.getFullYear() === currentDate.getFullYear()
+      );
+    })
     .reduce((sum, income) => sum + income.amount, 0);
-
-  // Calculate dynamic budget limits based on current month income
-  const dynamicBudgetLimits = EXPENSE_CATEGORIES.map((cat) =>
-    Math.round(
-      currentMonthIncome *
-        BUDGET_PERCENTAGES[cat as keyof typeof BUDGET_PERCENTAGES]
-    )
-  );
 
   return (
     <div className="relative min-h-screen bg-white flex flex-col items-center pt-28 px-6">
@@ -195,10 +241,10 @@ export default function Home() {
       {/* Header Section */}
       <div className="w-full max-w-5xl mb-12 text-center">
         <h1 className="text-4xl font-light text-slate-800 mb-3 tracking-tight">
-          Budget Tracker
+          {t("home.title")}
         </h1>
         <p className="text-slate-600 text-lg font-light">
-          Manage your finances with precision and clarity
+          {t("home.subtitle")}
         </p>
       </div>
 
@@ -211,14 +257,14 @@ export default function Home() {
             onClick={() => setOpenExpense(true)}
           >
             <Plus className="w-5 h-5" />
-            Add Expense
+            {t("home.addExpense")}
           </Button>
           <Button
             className="flex items-center gap-3 px-8 py-3 bg-green-500 text-white hover:bg-green-700 transition-all duration-300 shadow-sm hover:shadow-md"
             onClick={() => setOpenIncome(true)}
           >
             <DollarSign className="w-5 h-5" />
-            Add Income
+            {t("home.addIncome")}
           </Button>
         </div>
       </div>
@@ -235,7 +281,9 @@ export default function Home() {
       <div className="w-full max-w-5xl mb-12 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-red-50 rounded-2xl shadow-xl border border-red-200 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-medium text-red-900">Total Expenses</h3>
+            <h3 className="text-xl font-medium text-red-900">
+              {t("home.totalExpenses")}
+            </h3>
             <div className="w-4 h-4 bg-red-500 rounded-full shadow-sm"></div>
           </div>
           <p className="text-4xl font-light text-red-600 mb-2">
@@ -243,18 +291,24 @@ export default function Home() {
           </p>
           <p className="text-sm text-red-500 font-medium">
             {
-              expenses.filter(
-                (expense) =>
-                  new Date(expense.date).getMonth() === new Date().getMonth()
-              ).length
+              expenses.filter((expense) => {
+                const expenseDate = new Date(expense.date);
+                const currentDate = new Date();
+                return (
+                  expenseDate.getMonth() === currentDate.getMonth() &&
+                  expenseDate.getFullYear() === currentDate.getFullYear()
+                );
+              }).length
             }{" "}
-            transactions
+            {t("home.transactions")}
           </p>
         </div>
 
         <div className="bg-green-50 rounded-2xl shadow-xl border border-green-200 p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-medium text-green-900">Total Income</h3>
+            <h3 className="text-xl font-medium text-green-900">
+              {t("home.totalIncome")}
+            </h3>
             <div className="w-4 h-4 bg-green-500 rounded-full shadow-sm"></div>
           </div>
           <p className="text-4xl font-light text-green-600 mb-2">
@@ -262,12 +316,16 @@ export default function Home() {
           </p>
           <p className="text-sm text-green-500 font-medium">
             {
-              incomes.filter(
-                (income) =>
-                  new Date(income.date).getMonth() === new Date().getMonth()
-              ).length
+              incomes.filter((income) => {
+                const incomeDate = new Date(income.date);
+                const currentDate = new Date();
+                return (
+                  incomeDate.getMonth() === currentDate.getMonth() &&
+                  incomeDate.getFullYear() === currentDate.getFullYear()
+                );
+              }).length
             }{" "}
-            transactions
+            {t("home.transactions")}
           </p>
         </div>
       </div>
@@ -281,12 +339,13 @@ export default function Home() {
       <div className="w-full max-w-5xl mb-12">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
           <h3 className="text-xl font-medium text-slate-800 mb-6 text-center">
-            Category Breakdown
+            {t("home.categoryBreakdown")}
           </h3>
           <div className="space-y-4">
-            {EXPENSE_CATEGORIES.map((category, index) => {
+            {getExpenseCategories(t).map((category, index) => {
+              const categoryKey = EXPENSE_CATEGORY_KEYS[index];
               const categoryExpenses = expenses.filter(
-                (expense) => expense.category === category
+                (expense) => expense.category === categoryKey
               );
               // Filter to current month only for each category
               const currentMonthCategoryExpenses = categoryExpenses.filter(
@@ -319,7 +378,7 @@ export default function Home() {
                       style={{ width: `${Math.min(percentage, 100)}%` }}
                     ></div>
                   </div>
-                  {index < EXPENSE_CATEGORIES.length - 1 && (
+                  {index < getExpenseCategories(t).length - 1 && (
                     <div className="border-t border-slate-200 mt-4"></div>
                   )}
                 </div>
@@ -329,7 +388,7 @@ export default function Home() {
           <div className="mt-6 pt-4 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-slate-800 font-medium">
-                Total Monthly Expenses
+                {t("home.totalMonthlyExpenses")}
               </span>
               <span className="text-lg font-semibold text-slate-800">
                 ${currentMonthExpenses.toLocaleString()}
@@ -344,7 +403,7 @@ export default function Home() {
           href="/stats"
           className="inline-flex items-center gap-3 px-8 py-4 bg-gray-800 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 hover:bg-black focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
-          Show Detailed Analysis
+          {t("home.showDetailedAnalysis")}
         </a>
       </div>
 
@@ -354,16 +413,16 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-2xl font-semibold text-slate-900 mb-1">
-                Recent Transactions
+                {t("home.recentTransactions")}
               </h3>
               <p className="text-slate-500 text-sm">
-                Your latest financial activities
+                {t("home.latestFinancialActivities")}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-xs text-slate-500 font-medium">
-                {[...expenses, ...incomes].length} total
+                {[...expenses, ...incomes].length} {t("profile.total")}
               </span>
             </div>
           </div>
@@ -425,23 +484,29 @@ export default function Home() {
                               {
                                 (isExpense
                                   ? (item as Expense).title ||
-                                    (item as Expense).category
-                                  : "Income") as string
+                                    getExpenseCategories(t)[
+                                      EXPENSE_CATEGORY_KEYS.indexOf(
+                                        (item as Expense).category
+                                      )
+                                    ]
+                                  : t("profile.income")) as string
                               }
                             </p>
                             {isExpense && (
                               <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full transition-all duration-300 group-hover:bg-slate-200 group-hover:text-slate-700">
-                                {(item as Expense).category}
+                                {
+                                  getExpenseCategories(t)[
+                                    EXPENSE_CATEGORY_KEYS.indexOf(
+                                      (item as Expense).category
+                                    )
+                                  ]
+                                }
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
                             <p className="text-sm text-slate-500 font-medium group-hover:text-slate-600 transition-colors duration-300">
                               {format(new Date(item.date), "MMM dd, yyyy")}
-                            </p>
-                            <span className="text-slate-300">•</span>
-                            <p className="text-xs text-slate-400 group-hover:text-slate-500 transition-colors duration-300">
-                              {format(new Date(item.date), "HH:mm")}
                             </p>
                           </div>
                         </div>
@@ -460,7 +525,9 @@ export default function Home() {
                             {item.amount.toLocaleString()}
                           </p>
                           <p className="text-xs text-slate-400 font-medium group-hover:text-slate-500 transition-colors duration-300">
-                            {isExpense ? "Expense" : "Income"}
+                            {isExpense
+                              ? t("profile.expense")
+                              : t("profile.income")}
                           </p>
                         </div>
 
@@ -469,7 +536,7 @@ export default function Home() {
                             handleDeleteTransaction(item, originalIndex)
                           }
                           className="opacity-0 group-hover:opacity-100 transition-all duration-300 p-2 rounded-lg hover:bg-red-50 hover:shadow-lg border border-transparent hover:border-red-200 transform hover:scale-110"
-                          title="Delete transaction"
+                          title={t("home.deleteTransaction")}
                         >
                           <Trash2 className="w-4 h-4 text-red-400 hover:text-red-600 transition-colors" />
                         </button>
@@ -500,11 +567,10 @@ export default function Home() {
                   </svg>
                 </div>
                 <h4 className="text-lg font-semibold text-slate-700 mb-2">
-                  No transactions yet
+                  {t("home.noTransactionsYet")}
                 </h4>
                 <p className="text-slate-500 text-sm max-w-sm mx-auto">
-                  Start tracking your finances by adding your first expense or
-                  income entry
+                  {t("home.startTrackingFinances")}
                 </p>
               </div>
             )}
@@ -516,7 +582,7 @@ export default function Home() {
                 href="/history"
                 className="block w-full py-3 text-slate-600 hover:text-slate-800 font-medium transition-colors duration-200 text-center hover:bg-slate-50 rounded-lg"
               >
-                View all transactions →
+                {t("home.viewAllTransactions")}
               </a>
             </div>
           )}
@@ -528,7 +594,7 @@ export default function Home() {
         <DialogContent className="sm:max-w-[400px] bg-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              Add Expense
+              {t("home.addExpense")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddExpense} className="space-y-4">
@@ -537,7 +603,7 @@ export default function Home() {
                 htmlFor="expense-title"
                 className="text-gray-700 font-medium"
               >
-                Title
+                {t("home.formTitle")}
               </Label>
               <Input
                 id="expense-title"
@@ -546,7 +612,7 @@ export default function Home() {
                 value={expenseForm.title}
                 onChange={handleExpenseChange}
                 required
-                placeholder="Enter expense title"
+                placeholder={t("home.enterExpenseTitle")}
                 className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -555,7 +621,7 @@ export default function Home() {
                 htmlFor="expense-date"
                 className="text-gray-700 font-medium"
               >
-                Date
+                {t("home.formDate")}
               </Label>
               <Input
                 id="expense-date"
@@ -572,7 +638,7 @@ export default function Home() {
                 htmlFor="expense-category"
                 className="text-gray-700 font-medium"
               >
-                Category
+                {t("home.formCategory")}
               </Label>
               <Select
                 value={expenseForm.category}
@@ -584,11 +650,11 @@ export default function Home() {
                   id="expense-category"
                   className="w-full mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 >
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("home.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
+                  {getExpenseCategories(t).map((cat, index) => (
+                    <SelectItem key={cat} value={EXPENSE_CATEGORY_KEYS[index]}>
                       {cat}
                     </SelectItem>
                   ))}
@@ -600,7 +666,7 @@ export default function Home() {
                 htmlFor="expense-amount"
                 className="text-gray-700 font-medium"
               >
-                Amount ($)
+                {t("home.formAmount")}
               </Label>
               <Input
                 id="expense-amount"
@@ -619,7 +685,7 @@ export default function Home() {
                 type="submit"
                 className="w-full bg-red-600 hover:bg-red-700 text-white"
               >
-                Add Expense
+                {t("home.addExpense")}
               </Button>
             </DialogFooter>
           </form>
@@ -631,7 +697,7 @@ export default function Home() {
         <DialogContent className="sm:max-w-[400px] bg-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              Add Income
+              {t("home.addIncome")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddIncome} className="space-y-4">
@@ -640,7 +706,7 @@ export default function Home() {
                 htmlFor="income-date"
                 className="text-gray-700 font-medium"
               >
-                Date
+                {t("home.formDate")}
               </Label>
               <Input
                 id="income-date"
@@ -657,7 +723,7 @@ export default function Home() {
                 htmlFor="income-amount"
                 className="text-gray-700 font-medium"
               >
-                Amount ($)
+                {t("home.formAmount")}
               </Label>
               <Input
                 id="income-amount"
@@ -676,7 +742,7 @@ export default function Home() {
                 type="submit"
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
-                Add Income
+                {t("home.addIncome")}
               </Button>
             </DialogFooter>
           </form>

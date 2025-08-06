@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Bar } from "react-chartjs-2";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,8 +14,6 @@ import {
 import {
   format,
   subMonths,
-  subDays,
-  subWeeks,
   subYears,
   startOfDay,
   endOfDay,
@@ -56,18 +55,19 @@ interface ExpenseChartProps {
   incomes: Income[];
 }
 
-const TIME_PERIODS = [
-  { label: "Today", value: "today" },
-  { label: "This Week", value: "week" },
-  { label: "This Month", value: "month" },
-  { label: "Last Month", value: "lastMonth" },
-  { label: "This Year", value: "year" },
-  { label: "6 Months", value: "6months" },
-  { label: "5 Years", value: "5years" },
-  { label: "10 Years", value: "10years" },
+const getTimePeriods = (t: (key: string) => string) => [
+  { label: t("stats.today"), value: "today" },
+  { label: t("stats.thisWeek"), value: "week" },
+  { label: t("stats.thisMonth"), value: "month" },
+  { label: t("stats.lastMonth"), value: "lastMonth" },
+  { label: t("stats.thisYear"), value: "year" },
+  { label: t("stats.sixMonths"), value: "6months" },
+  { label: t("stats.fiveYears"), value: "5years" },
+  { label: t("stats.tenYears"), value: "10years" },
 ];
 
 export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
+  const { t } = useLanguage();
   const [selectedPeriod, setSelectedPeriod] = useState("month");
 
   // Get chart dimensions based on time period
@@ -254,7 +254,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
     labels: aggregatedData.map((item) => item.label),
     datasets: [
       {
-        label: "Expenses",
+        label: t("profile.expense"),
         data: aggregatedData.map((item) => item.expenses),
         backgroundColor: "rgba(239, 68, 68, 0.8)", // Red with higher opacity
         borderColor: "rgba(239, 68, 68, 1)",
@@ -265,7 +265,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
         stack: "stack1", // Stack them together
       },
       {
-        label: "Income",
+        label: t("profile.income"),
         data: aggregatedData.map((item) => item.incomes),
         backgroundColor: "rgba(34, 197, 94, 0.8)", // Green with higher opacity
         borderColor: "rgba(34, 197, 94, 1)",
@@ -288,8 +288,10 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
         labels: {
           usePointStyle: true,
           padding: 20,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           generateLabels: (chart: any) => {
             const datasets = chart.data.datasets;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return datasets.map((dataset: any, index: number) => ({
               text: dataset.label,
               fillStyle: dataset.backgroundColor,
@@ -301,6 +303,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
             }));
           },
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onClick: (e: any, legendItem: any, legend: any) => {
           // Default Chart.js legend click behavior
           const index = legendItem.index;
@@ -312,7 +315,9 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
       },
       tooltip: {
         callbacks: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: (ctx: any) => `${ctx.dataset.label}: $${ctx.parsed.y}`,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           afterBody: (tooltipItems: any) => {
             const dataIndex = tooltipItems[0].dataIndex;
             const item = aggregatedData[dataIndex];
@@ -338,6 +343,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
         grid: { color: "#e5e7eb" },
         ticks: {
           font: { size: 12 },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           callback: (value: any) => `$${value}`,
         },
         stacked: true, // Enable stacking on y-axis
@@ -353,7 +359,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">
-          Financial Overview
+          {t("stats.financialOverview")}
         </h3>
         <div className="flex gap-2">
           <select
@@ -361,7 +367,7 @@ export default function ExpenseChart({ expenses, incomes }: ExpenseChartProps) {
             onChange={(e) => setSelectedPeriod(e.target.value)}
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            {TIME_PERIODS.map((period) => (
+            {getTimePeriods(t).map((period) => (
               <option key={period.value} value={period.value}>
                 {period.label}
               </option>

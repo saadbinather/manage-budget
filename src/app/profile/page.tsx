@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   User,
   Mail,
@@ -39,7 +39,7 @@ const dummyTransactions: Transaction[] = [
 ];
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile>(staticProfile);
+  const [profile] = useState<UserProfile>(staticProfile);
   const [editing, setEditing] = useState(false);
 
   // Calculate totals

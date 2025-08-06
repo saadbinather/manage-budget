@@ -3,6 +3,24 @@ import { useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import ExpenseBarChart from "@/components/ExpenseBarChart";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+// Use consistent category keys for data storage
+const EXPENSE_CATEGORY_KEYS = [
+  "food",
+  "rent",
+  "utilities",
+  "travel",
+  "entertainment",
+];
+
+const getExpenseCategories = (t: (key: string) => string) => [
+  t("category.food"),
+  t("category.rent"),
+  t("category.utilities"),
+  t("category.travel"),
+  t("category.entertainment"),
+];
 
 type Expense = {
   date: string;
@@ -18,24 +36,43 @@ type Income = {
 
 function getSessionData<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-  const data = sessionStorage.getItem(key);
-  return data ? JSON.parse(data) : fallback;
+  try {
+    const data = sessionStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch (error) {
+    console.error(`Error loading ${key} from sessionStorage:`, error);
+    return fallback;
+  }
 }
 
 function setSessionData<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(key, JSON.stringify(value));
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Error saving ${key} to sessionStorage:`, error);
+  }
 }
 
 export default function HistoryPage() {
+  const { t } = useLanguage();
+  // State - initialize as empty arrays to avoid hydration mismatch
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+  // Load data from sessionStorage on mount (client-side only)
   useEffect(() => {
+    console.log("History component mounted, loading data...");
     const savedExpenses = getSessionData("expenses", []);
     const savedIncomes = getSessionData("incomes", []);
+    console.log("History loading data:", { savedExpenses, savedIncomes });
+
+    // Always set the data, even if empty, but mark as loaded
     setExpenses(savedExpenses);
     setIncomes(savedIncomes);
+    setIsDataLoaded(true);
+    console.log("History data loaded successfully");
   }, []);
 
   const handleDeleteTransaction = (item: Expense | Income, index: number) => {
@@ -44,11 +81,15 @@ export default function HistoryPage() {
     if (isExpense) {
       const newExpenses = expenses.filter((_, i) => i !== index);
       setExpenses(newExpenses);
-      setSessionData("expenses", newExpenses);
+      if (isDataLoaded) {
+        setSessionData("expenses", newExpenses);
+      }
     } else {
       const newIncomes = incomes.filter((_, i) => i !== index);
       setIncomes(newIncomes);
-      setSessionData("incomes", newIncomes);
+      if (isDataLoaded) {
+        setSessionData("incomes", newIncomes);
+      }
     }
   };
 
@@ -58,10 +99,10 @@ export default function HistoryPage() {
         {/* Header Section */}
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-light text-slate-800 mb-3 tracking-tight">
-            Transaction History
+            {t("history.title")}
           </h1>
           <p className="text-slate-600 text-lg font-light">
-            Complete overview of all your financial activities
+            {t("history.subtitle")}
           </p>
         </div>
 
@@ -71,16 +112,16 @@ export default function HistoryPage() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-2xl font-semibold text-slate-900 mb-1">
-                  All Transactions
+                  {t("history.title")}
                 </h3>
                 <p className="text-slate-500 text-sm">
-                  Your complete financial history
+                  {t("history.subtitle")}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-xs text-slate-500 font-medium">
-                  {[...expenses, ...incomes].length} total
+                  {[...expenses, ...incomes].length} {t("profile.total")}
                 </span>
               </div>
             </div>
@@ -141,23 +182,29 @@ export default function HistoryPage() {
                                 {
                                   (isExpense
                                     ? (item as Expense).title ||
-                                      (item as Expense).category
-                                    : "Income") as string
+                                      getExpenseCategories(t)[
+                                        EXPENSE_CATEGORY_KEYS.indexOf(
+                                          (item as Expense).category
+                                        )
+                                      ]
+                                    : t("profile.income")) as string
                                 }
                               </p>
                               {isExpense && (
                                 <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full transition-all duration-300 group-hover:bg-slate-200 group-hover:text-slate-700">
-                                  {(item as Expense).category}
+                                  {
+                                    getExpenseCategories(t)[
+                                      EXPENSE_CATEGORY_KEYS.indexOf(
+                                        (item as Expense).category
+                                      )
+                                    ]
+                                  }
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-3">
                               <p className="text-sm text-slate-500 font-medium group-hover:text-slate-600 transition-colors duration-300">
                                 {format(new Date(item.date), "MMM dd, yyyy")}
-                              </p>
-                              <span className="text-slate-300">•</span>
-                              <p className="text-xs text-slate-400 group-hover:text-slate-500 transition-colors duration-300">
-                                {format(new Date(item.date), "HH:mm")}
                               </p>
                             </div>
                           </div>
@@ -176,7 +223,9 @@ export default function HistoryPage() {
                               {item.amount.toLocaleString()}
                             </p>
                             <p className="text-xs text-slate-400 font-medium group-hover:text-slate-500 transition-colors duration-300">
-                              {isExpense ? "Expense" : "Income"}
+                              {isExpense
+                                ? t("profile.expense")
+                                : t("profile.income")}
                             </p>
                           </div>
 
@@ -185,7 +234,7 @@ export default function HistoryPage() {
                               handleDeleteTransaction(item, originalIndex)
                             }
                             className="opacity-0 group-hover:opacity-100 transition-all duration-300 p-2 rounded-lg hover:bg-red-50 hover:shadow-lg border border-transparent hover:border-red-200 transform hover:scale-110"
-                            title="Delete transaction"
+                            title={t("history.delete")}
                           >
                             <Trash2 className="w-4 h-4 text-red-400 hover:text-red-600 transition-colors" />
                           </button>
@@ -216,11 +265,10 @@ export default function HistoryPage() {
                     </svg>
                   </div>
                   <h4 className="text-lg font-semibold text-slate-700 mb-2">
-                    No transactions yet
+                    {t("history.noTransactions")}
                   </h4>
                   <p className="text-slate-500 text-sm max-w-sm mx-auto">
-                    Start tracking your finances by adding your first expense or
-                    income entry
+                    {t("history.addFirstTransaction")}
                   </p>
                 </div>
               )}

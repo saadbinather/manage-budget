@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BudgetChartProps {
   currentMonthExpenses: number;
@@ -10,6 +11,8 @@ export default function BudgetChart({
   currentMonthExpenses,
   currentMonthIncome,
 }: BudgetChartProps) {
+  const { t } = useLanguage();
+
   const percentage =
     currentMonthIncome > 0
       ? (currentMonthExpenses / currentMonthIncome) * 100
@@ -61,13 +64,13 @@ export default function BudgetChart({
       </div>
       <div className="space-y-2">
         <h4 className="text-lg font-medium text-slate-800">
-          This Month's Budget
+          {t("profile.thisMonthsBudget")}
         </h4>
         <p className="text-2xl font-light text-slate-800">
           ${currentMonthIncome.toLocaleString()}
         </p>
         <p className="text-sm text-slate-500">
-          ${currentMonthExpenses.toLocaleString()} spent
+          ${currentMonthExpenses.toLocaleString()} {t("profile.spent")}
         </p>
         {!hasNoData && (
           <p
@@ -76,16 +79,20 @@ export default function BudgetChart({
             }`}
           >
             {isOverBudget
-              ? `Due Amount: $${Math.abs(remaining).toLocaleString()}`
-              : `Budget Limit Left: $${remaining.toLocaleString()}`}
+              ? `${t("profile.dueAmount")}: $${Math.abs(
+                  remaining
+                ).toLocaleString()}`
+              : `${t(
+                  "profile.budgetLimitLeft"
+                )}: $${remaining.toLocaleString()}`}
           </p>
         )}
         {(isOverBudget || isAtLimit) && !hasNoData && (
           <div>
             <p className="text-xs font-medium text-red-700">
               {isOverBudget
-                ? "⚠️ Warning: You've exceeded your budget limit!"
-                : "⚠️ Warning: You've reached your budget limit!"}
+                ? `⚠️ ${t("profile.warningExceeded")}`
+                : `⚠️ ${t("profile.warningReached")}`}
             </p>
           </div>
         )}
