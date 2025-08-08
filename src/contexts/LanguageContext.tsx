@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type Language = "en" | "es";
+type Language = "en" | "es" | "pt";
 
 interface LanguageContextType {
   language: Language;
@@ -105,14 +105,6 @@ const translations = {
     "stats.showingFilteredResults": "Showing filtered results",
     "stats.filteredTransactions": "Filtered Transactions",
 
-
-
-
-
-
-
-
-    
     // History page
     "history.title": "Transaction History",
     "history.subtitle": "View and manage your financial records",
@@ -277,6 +269,133 @@ const translations = {
     "category.utilities": "Servicios",
     "category.travel": "Viajes",
     "category.entertainment": "Entretenimiento",
+  },
+  pt: {
+    // Navigation
+    "nav.home": "Início",
+    "nav.stats": "Estatísticas",
+    "nav.history": "Histórico",
+    "nav.profile": "Perfil",
+
+    // Home page
+    "home.title": "Rastreador de Orçamento",
+    "home.subtitle": "Gerencie suas finanças com precisão e clareza",
+    "home.addExpense": "Adicionar Despesa",
+    "home.addIncome": "Adicionar Receita",
+    "home.totalExpenses": "Despesas",
+    "home.totalIncome": "Receitas",
+    "home.netBalance": "Saldo Líquido",
+    "home.transactions": "transações",
+    "home.positiveBalance": "Saldo positivo",
+    "home.negativeBalance": "Saldo negativo",
+    "home.categoryBreakdown": "Divisão por Categoria",
+    "home.totalMonthlyExpenses": "Despesas Mensais Totais",
+    "home.showDetailedAnalysis": "Mostrar Análise Detalhada",
+    "home.recentTransactions": "Transações Recentes",
+    "home.latestFinancialActivities": "Suas últimas atividades financeiras",
+    "home.noTransactionsYet": "Ainda não há transações",
+    "home.startTrackingFinances":
+      "Comece a rastrear suas finanças adicionando sua primeira despesa ou receita",
+    "home.viewAllTransactions": "Ver todas as transações →",
+    "home.formTitle": "Título",
+    "home.formDate": "Data",
+    "home.formCategory": "Categoria",
+    "home.selectCategory": "Selecionar categoria",
+    "home.formAmount": "Valor (R$)",
+    "home.enterExpenseTitle": "Digite o título da despesa",
+    "home.deleteTransaction": "Excluir transação",
+
+    // Profile page
+    "profile.title": "Perfil do Usuário",
+    "profile.subtitle": "Gerencie sua conta e visualize seu resumo financeiro",
+    "profile.editProfile": "Editar Perfil",
+    "profile.editing": "Editando...",
+    "profile.budgetTrackerUser": "Usuário do Rastreador de Orçamento",
+    "profile.name": "Nome",
+    "profile.age": "Idade",
+    "profile.email": "E-mail",
+    "profile.years": "anos",
+    "profile.totalIncome": "Receitas Totais",
+    "profile.totalExpenses": "Despesas Totais",
+    "profile.recentTransactions": "Transações Recentes",
+    "profile.latestActivities": "Suas últimas atividades financeiras",
+    "profile.total": "total",
+    "profile.viewAll": "Ver todas as transações →",
+    "profile.income": "Receita",
+    "profile.expense": "Despesa",
+    "profile.thisMonthsBudget": "Orçamento Deste Mês",
+    "profile.spent": "gasto",
+    "profile.dueAmount": "Valor Devido",
+    "profile.budgetLimitLeft": "Limite de Orçamento Restante",
+    "profile.warningExceeded": "Aviso: Você excedeu seu limite de orçamento!",
+    "profile.warningReached": "Aviso: Você atingiu seu limite de orçamento!",
+
+    // Stats page
+    "stats.title": "Estatísticas Financeiras",
+    "stats.subtitle": "Analise seus padrões de gastos e tendências",
+    "stats.advancedFilters": "Filtros Avançados",
+    "stats.resetFilters": "Redefinir Filtros",
+    "stats.dateFrom": "Data De",
+    "stats.dateTo": "Data Até",
+    "stats.category": "Categoria",
+    "stats.amountRange": "Faixa de Valor",
+    "stats.type": "Tipo",
+    "stats.all": "Todos",
+    "stats.expense": "Despesa",
+    "stats.income": "Receita",
+    "stats.applyFilters": "Aplicar Filtros",
+    "stats.today": "Hoje",
+    "stats.thisWeek": "Esta Semana",
+    "stats.thisMonth": "Este Mês",
+    "stats.lastMonth": "Mês Passado",
+    "stats.thisYear": "Este Ano",
+    "stats.sixMonths": "6 Meses",
+    "stats.fiveYears": "5 Anos",
+    "stats.tenYears": "10 Anos",
+    "stats.financialOverview": "Visão Geral Financeira",
+    "stats.monthlyTrends": "Tendências Mensais",
+    "stats.expenseBreakdownByCategory": "Divisão de Despesas por Categoria",
+    "stats.budgetVsActualSpending": "Orçamento vs Gasto Real",
+    "stats.tryAdjustingFilters": "Tente ajustar seus filtros",
+    "stats.showingFilteredResults": "Mostrando resultados filtrados",
+    "stats.filteredTransactions": "Transações Filtradas",
+
+    // History page
+    "history.title": "Histórico de Transações",
+    "history.subtitle": "Visualize e gerencie seus registros financeiros",
+    "history.noTransactions": "Nenhuma transação encontrada",
+    "history.addFirstTransaction":
+      "Adicione sua primeira transação para começar",
+    "history.date": "Data",
+    "history.category": "Categoria",
+    "history.amount": "Valor",
+    "history.transactionTitle": "Título",
+    "history.actions": "Ações",
+    "history.delete": "Excluir",
+    "history.edit": "Editar",
+
+    // Common
+    "common.loading": "Carregando...",
+    "common.error": "Erro",
+    "common.success": "Sucesso",
+    "common.cancel": "Cancelar",
+    "common.save": "Salvar",
+    "common.delete": "Excluir",
+    "common.edit": "Editar",
+    "common.close": "Fechar",
+    "common.confirm": "Confirmar",
+    "common.yes": "Sim",
+    "common.no": "Não",
+    "common.min": "Mín",
+    "common.max": "Máx",
+    "common.range": "Faixa",
+
+    // Categories
+    "category.food": "Alimentação",
+    "category.rent": "Aluguel",
+    "category.utilities": "Serviços",
+    "category.travel": "Viagem",
+    "category.entertainment": "Entretenimento",
   },
 };
 

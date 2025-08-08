@@ -18,9 +18,14 @@ export default function LanguageSelector() {
       name: "Español",
       flag: "🇪🇸",
     },
+    {
+      code: "pt",
+      name: "Português",
+      flag: "🇧🇷",
+    },
   ];
 
-  const currentLanguage = languages.find(lang => lang.code === language);
+  const currentLanguage = languages.find((lang) => lang.code === language);
 
   return (
     <div className="relative">
@@ -30,7 +35,11 @@ export default function LanguageSelector() {
       >
         <span className="text-lg">{currentLanguage?.flag}</span>
         <span>{currentLanguage?.name}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       {isOpen && (
@@ -39,11 +48,13 @@ export default function LanguageSelector() {
             <button
               key={lang.code}
               onClick={() => {
-                setLanguage(lang.code as "en" | "es");
+                setLanguage(lang.code as "en" | "es" | "pt");
                 setIsOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors duration-200 hover:bg-gray-50 ${
-                language === lang.code ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                language === lang.code
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-gray-700"
               }`}
             >
               <span className="text-lg">{lang.flag}</span>
@@ -58,11 +69,8 @@ export default function LanguageSelector() {
 
       {/* Backdrop to close dropdown */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
       )}
     </div>
   );
-} 
+}

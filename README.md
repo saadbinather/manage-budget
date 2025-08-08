@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Personal Finance Tracker
+
+A modern, user-friendly web application to help you track your income, expenses, and budgets. Analyze your financial habits, visualize trends, and manage your money smarter.
+
+## Features
+
+- **Dashboard**: Overview of your financial status, recent transactions, and budget alerts.
+- **Profile**: Manage your personal information and see a summary of your financial activities.
+- **Statistics**: Advanced filters and charts to analyze your spending patterns and trends.
+- **Transaction History**: View, edit, and delete all your past transactions.
+- **Multi-language Support**: Easily switch between English and Spanish.
+- **Categories**: Organize your expenses and income by customizable categories.
+- **Budget Management**: Set monthly budgets and receive warnings when you approach or exceed your limits.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js (v16 or higher)
+- npm or yarn
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/personal-finance-tracker.git
+   cd personal-finance-tracker
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-## Learn More
+3. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/contexts/LanguageContext.tsx` — Handles multi-language support.
+- `src/components/` — Reusable UI components.
+- `src/pages/` — Main application pages (Dashboard, Profile, Stats, History).
+- `src/utils/` — Utility functions and helpers.
 
-## Deploy on Vercel
+## Customization
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Add/Edit Categories**: Update the categories in the LanguageContext or relevant configuration files.
+- **Add More Languages**: Extend the `LanguageContext.tsx` with new language objects.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests for improvements and bug fixes.
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgements
+
+- Inspired by modern finance management tools.
+- Built with React, TypeScript, and love.
+
+---
